@@ -12,8 +12,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterIndexTogether(
-            name='notification',
-            index_together={('recipient', 'unread')},
+        migrations.AddIndex(
+            model_name='notification',
+            index=models.Index(
+                fields=['recipient', 'unread'],
+                name='notif_recipient_unread_idx',
+            ),
         ),
     ]
