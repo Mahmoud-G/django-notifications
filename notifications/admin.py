@@ -1,28 +1,36 @@
-''' Django notifications admin file '''
-# -*- coding: utf-8 -*-
 from django.contrib import admin
-from django.utils.translation import gettext_lazy
-from notifications.base.admin import AbstractNotificationAdmin
-from swapper import load_model
-
-Notification = load_model('notifications', 'Notification')
+from .models import Notification
 
 
-def mark_unread(modeladmin, request, queryset):
-    queryset.update(unread=True)
-mark_unread.short_description = gettext_lazy('Mark selected notifications as unread')
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
 
+    list_display = (
+        "recipient",
+        "actor",
+        "verb",
+        "unread",
+        "timestamp",
+    )
 
-class NotificationAdmin(AbstractNotificationAdmin):
-    raw_id_fields = ('recipient',)
-    readonly_fields = ('action_object_url', 'actor_object_url', 'target_object_url')
-    list_display = ('recipient', 'actor',
-                    'level', 'target', 'unread', 'public')
-    list_filter = ('level', 'unread', 'public', 'timestamp',)
-    actions = [mark_unread]
+    list_filter = (
+        "unread",
+        "timestamp",
+    )
+
+    search_fields = (
+        "verb",
+        "description",
+    )
 
     def get_queryset(self, request):
-        qs = super(NotificationAdmin, self).get_queryset(request)
-        return qs.prefetch_related('actor', 'action_object', 'target')
-
-admin.site.register(Notification, NotificationAdmin)
+        qs = super().get_queryset(request)
+        # select_related covers the recipient FK and the three content-type FKs
+        # (avoids one query per row for those).  prefetch_related('actor') then
+        # fetches all actor objects in a single query per content-type group.
+        return qs.select_related(
+            "recipient",
+            "actor_content_type",
+            "target_content_type",
+            "action_object_content_type",
+        ).prefetch_related("actor", "action_object", "target")

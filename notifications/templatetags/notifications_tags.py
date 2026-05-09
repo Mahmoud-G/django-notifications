@@ -1,45 +1,32 @@
 ''' Django notifications template tags file '''
 # -*- coding: utf-8 -*-
-from django import get_version
 from django.core.cache import cache
 from django.template import Library
+from django.urls import reverse
 from django.utils.html import format_html
-from packaging.version import (
-    parse as parse_version,  # pylint: disable=no-name-in-module,import-error
-)
 
 from notifications import settings
 from notifications.settings import get_config
-
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import (
-        reverse,  # pylint: disable=no-name-in-module,import-error
-    )
 
 register = Library()
 
 
 def get_cached_notification_unread_count(user):
-
+    # Key is scoped per user — a shared key would serve user A's count to user B.
+    cache_key = f'notifications_unread_count_{user.pk}'
     return cache.get_or_set(
-        'cache_notification_unread_count',
+        cache_key,
         user.notifications.unread().count,
-        settings.get_config()['CACHE_TIMEOUT']
+        settings.get_config()['CACHE_TIMEOUT'],
     )
 
+
+@register.simple_tag(takes_context=True)
 def notifications_unread(context):
     user = user_context(context)
     if not user:
         return ''
     return get_cached_notification_unread_count(user)
-
-
-if parse_version(get_version()) >= parse_version('2.0'):
-    notifications_unread = register.simple_tag(takes_context=True)(notifications_unread)  # pylint: disable=invalid-name
-else:
-    notifications_unread = register.assignment_tag(takes_context=True)(notifications_unread)  # noqa
 
 
 @register.filter
@@ -51,14 +38,14 @@ def has_notification(user):
 
 # Requires vanilla-js framework - http://vanilla-js.com/
 @register.simple_tag
-def register_notify_callbacks(badge_class='live_notify_badge',  # pylint: disable=too-many-arguments,missing-docstring
+def register_notify_callbacks(badge_class='live_notify_badge',  # pylint: disable=too-many-arguments
                               menu_class='live_notify_list',
                               refresh_period=15,
                               callbacks='',
                               api_name='list',
                               fetch=5,
                               nonce=None,
-                              mark_as_read=False
+                              mark_as_read=False,
                               ):
     refresh_period = int(refresh_period) * 1000
 
@@ -85,12 +72,10 @@ def register_notify_callbacks(badge_class='live_notify_badge',  # pylint: disabl
         unread_url=reverse('notifications:unread'),
         mark_all_unread_url=reverse('notifications:mark_all_as_read'),
         fetch_count=fetch,
-        mark_as_read=str(mark_as_read).lower()
+        mark_as_read=str(mark_as_read).lower(),
     )
 
-    # add a nonce value to the script tag if one is provided
     nonce_str = ' nonce="{nonce}"'.format(nonce=nonce) if nonce else ""
-
     script = '<script type="text/javascript"{nonce}>'.format(nonce=nonce_str) + definitions
     for callback in callbacks.split(','):
         script += "register_notifier(" + callback + ");"
@@ -122,11 +107,7 @@ def user_context(context):
 
     request = context['request']
     user = request.user
-    try:
-        user_is_anonymous = user.is_anonymous()
-    except TypeError:  # Django >= 1.11
-        user_is_anonymous = user.is_anonymous
 
-    if user_is_anonymous:
+    if user.is_anonymous:
         return None
     return user

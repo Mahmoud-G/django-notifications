@@ -1,15 +1,12 @@
-'''' Django notifications utils file '''
+''' Django notifications utils file '''
 # -*- coding: utf-8 -*-
-import sys
 
 
-if sys.version > '3':
-    long = int  # pylint: disable=invalid-name
+def id2slug(id_value):
+    """Encode a notification PK as a URL-safe numeric slug."""
+    return str(int(id_value) + 110909)
 
 
 def slug2id(slug):
-    return long(slug) - 110909
-
-
-def id2slug(notification_id):
-    return notification_id + 110909
+    """Decode a numeric slug back to a notification PK."""
+    return int(slug) - 110909
