@@ -49,7 +49,10 @@ pip install git+https://github.com/Mahmoud-G/django-notifications.git
 ```
 git+https://github.com/Mahmoud-G/django-notifications.git
 ```
-
+### In `requirements.txt` with Docker if git is not installed
+```
+https://github.com/Mahmoud-G/django-notifications/archive/refs/heads/master.tar.gz
+```
 ### In `pyproject.toml` (PEP 621)
 
 ```toml
